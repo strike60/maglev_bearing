@@ -1,0 +1,24 @@
+# 只保留源文件 (.m) 和配置文件
+# Keep only source files (.m) and config files
+
+# Ignore everything by default
+*
+
+# But allow source files (.m)
+!*.m
+
+# Allow config files
+!.vscode/
+!.vscode/launch.json
+
+# Allow .gitignore itself
+!.gitignore
+
+# Allow markdown docs (optional - remove if you don't want them tracked)
+!*.md
+!*.pdf
+
+# Keep .png files in all directory (including subdirectories)
+!*.png
+!**/
+!**/*.png
