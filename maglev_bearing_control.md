@@ -338,13 +338,250 @@ $$
 3. **差动配置线性化**：在偏置电流 $i_{\text{bias}} = 3$ A 附近，净电磁力与控制电流近似呈线性关系，有利于控制器设计。
 4. **力-位移刚度**：位移 $x$ 增大时，净力曲线斜率增大，即系统的等效刚度随位移增大而增大（正刚度特性）。
 
-# 三、控制器设计（位置误差到电磁力控制器）
+# 三、电磁力映射控制电流方法
 
-## 1. pi控制器
+## 1. 差动配置
 
-## 2. 积分反步控制器
+磁轴承采用**上下差动电磁铁（推挽配置）**产生双向净电磁力，实现对转子的主动控制。
 
-### 2.1 控制器设计及稳定性分析
+### 1.1 基本结构
+
+上下两个电磁铁分别位于转子两侧，线圈电流和气隙分别为：
+
+$$
+\begin{aligned}
+\text{上磁铁:} &\quad i_1 = i_{\text{bias}} + i_{\text{ctrl}}, \quad h_1 = x_0 - x \\
+\text{下磁铁:} &\quad i_2 = i_{\text{bias}} - i_{\text{ctrl}}, \quad h_2 = x_0 + x
+\end{aligned}
+$$
+
+其中：
+- $i_{\text{bias}}$ 为偏置电流（提供静态磁场偏置，使系统工作在线性区）
+- $i_{\text{ctrl}}$ 为控制电流（由控制器输出，可正可负）
+- $x_0$ 为标称气隙，$x$ 为转子偏离平衡点的位移（向上为正）
+
+### 1.2 单侧电磁力（Frolich 磁饱和模型）
+
+单侧电磁力采用 Frolich 磁饱和模型计算。首先求解磁路方程得到磁通 $\Phi$：
+
+$$
+H_{\text{iron}} l_{\text{iron}} + \frac{2h \Phi}{\mu_0 A_a} = N i
+$$
+
+其中 $H_{\text{iron}} = \dfrac{a (\Phi / A_{\text{iron}})}{1 - b |\Phi / A_{\text{iron}}|}$ 为铁芯磁场强度（Frolich 模型），$a = 1/\mu_{\text{init}}$，$b = 1/B_{\text{sat}}$。
+
+求解出 $\Phi$ 后，由麦克斯韦应力张量法计算电磁力：
+
+$$
+F(i, h) = \frac{\Phi^2 \cos\alpha}{2 \mu_0 A_a}
+$$
+
+### 1.3 差动净力
+
+上下电磁铁的净力为两者之差（上磁铁力减下磁铁力）：
+
+$$
+F_{\text{net}}(i_{\text{ctrl}}, x) = F(i_1, h_1) - F(i_2, h_2)
+$$
+
+代入差动配置的电流和气隙：
+
+$$
+F_{\text{net}} = F(i_{\text{bias}} + i_{\text{ctrl}},\; x_0 - x) - F(i_{\text{bias}} - i_{\text{ctrl}},\; x_0 + x)
+$$
+
+### 1.4 线性化近似
+
+在忽略磁饱和的理想情况下（$B_{\text{sat}} \to \infty$，即 $\Phi = \mu_0 A_a N i / (2h)$），电磁力简化为：
+
+$$
+F(i, h) = k_0 \frac{i^2}{h^2}, \quad k_0 = \frac{\mu_0 A_a N^2 \cos\alpha}{8}
+$$
+
+净力为：
+
+$$
+F_{\text{net}} = k_0 \frac{(i_{\text{bias}} + i_{\text{ctrl}})^2}{(x_0 - x)^2} - k_0 \frac{(i_{\text{bias}} - i_{\text{ctrl}})^2}{(x_0 + x)^2}
+$$
+
+在平衡点 $(x=0,\; i_{\text{ctrl}}=0)$ 附近线性化：
+
+$$
+F_{\text{net}} \approx k_i \cdot i_{\text{ctrl}} + k_x \cdot x
+$$
+
+其中：
+
+$$
+k_i = \left.\frac{\partial F_{\text{net}}}{\partial i_{\text{ctrl}}}\right|_{x=0,i_{\text{ctrl}}=0}
+= \frac{4 k_0 i_{\text{bias}}}{x_0^2} \quad \text{[力-电流刚度，N/A]}
+$$
+
+$$
+k_x = \left.\frac{\partial F_{\text{net}}}{\partial x}\right|_{x=0,i_{\text{ctrl}}=0}
+= \frac{4 k_0 i_{\text{bias}}^2}{x_0^3} \quad \text{[力-位移刚度，N/m]}
+$$
+
+> **注意**：$k_x > 0$，表示位移增大时净力也增大（正反馈效应），这是磁轴承**开环不稳定性**的根源，需要主动控制来克服。
+
+### 1.5 差动配置的优势
+
+1. **双向力输出**：通过改变 $i_{\text{ctrl}}$ 的符号，可产生向上或向下的净力，实现双向控制
+2. **准线性工作区**：在偏置电流附近，$F_{\text{net}}$ 与 $i_{\text{ctrl}}$ 近似呈线性关系（见图3），简化控制器设计
+3. **力-电流刚度可调**：$k_i \propto i_{\text{bias}}$，可通过调整偏置电流改变系统的控制灵敏度
+4. **共模抑制**：差动配置可以部分抵消磁饱和非线性、温度漂移等共模干扰
+
+### 1.6 差动配置的劣势
+
+差动配置在大偏置电流下会失控。本节通过仿真将这个问题说清楚。
+仿真环境：
+
+#### 仿真参数
+
+| 参数 | 符号 | 数值 | 单位 |
+|------|------|------|------|
+| 仿真时长 | $T_{\text{end}}$ | $2.0$ | s |
+| 仿真步长 | $\Delta t$ | $1 \times 10^{-5}$ | s |
+| 控制周期 | $\Delta t_c$ | $0.001$ (1 kHz) | s |
+| 控制步间隔 | $N_c$ | $100$ | 仿真步 |
+
+#### 动力学模型
+
+系统状态为位移 $x$ 和速度 $v$，动力学方程为：
+
+$$
+m \ddot{x} = F_{\text{em}} + F_{\text{spring}}
+$$
+
+其中弹簧力（相对平衡点的增量）为 $F_{\text{spring}} = -k_{\text{spring}} x$，重力已被弹簧预压缩抵消。
+
+采用**半隐式欧拉法**进行数值积分：
+
+$$
+\begin{aligned}
+a_k &= (F_{\text{em},k} + F_{\text{spring},k}) / m \\
+v_{k+1} &= v_k + a_k \cdot \Delta t \\
+x_{k+1} &= x_k + v_{k+1} \cdot \Delta t + w_k
+\end{aligned}
+$$
+
+其中 $w_k \sim \mathcal{N}(0, \sigma^2)$ 为位移白噪声，$\sigma = 1 \times 10^{-7}$ m，用于模拟测量噪声。
+
+#### 状态约束
+
+位移不能超过标称气隙（硬约束），碰撞模型为完全非弹性碰撞：
+
+$$
+|x| \leq x_0, \quad \text{若 } |x| > x_0 \text{ 则 } x = \text{sign}(x) \cdot x_0,\; v = 0
+$$
+
+#### 初始条件
+
+| 变量 | 初始值 | 单位 |
+|------|:---:|------|
+| 位移 $x$ | $0$ | m |
+| 速度 $v$ | $0$ | m/s |
+
+初始位移设置为参考轨迹的初始值：$x(0) = x_{\text{ref}}(0)$。
+
+#### 参考轨迹
+
+仿真支持四种参考轨迹，通过 `mode` 变量切换：
+
+| 模式 | 表达式 | 参数 |
+|------|--------|------|
+| `'step'` | $x_{\text{ref}}(t) = 0.1 \text{ mm}$ | 阶跃幅值 $0.1$ mm |
+| `'sin'` | $x_{\text{ref}}(t) = 0.1 \sin(20\pi t) \text{ mm}$ | 频率 $10$ Hz，幅值 $0.1$ mm |
+| `'square'` | $x_{\text{ref}}(t) = 0.1 \cdot \text{square}(10\pi t) \text{ mm}$ | 频率 $5$ Hz，占空比 $50\%$ |
+| `'zero'` | $x_{\text{ref}}(t) = 0$ | 用于抗扰动测试 |
+
+#### 控制模式
+
+仿真支持多种**力计算-电流映射**组合，通过两个开关变量选择：
+
+**力计算方法** (`force_cal_methods`)：
+
+| 方法 | 说明 |
+|------|------|
+| `'pi'` | PID 控制器：$F_{\text{des}} = k_{\text{spring}} x + K_p e + K_i \int e \, dt + K_d \dot{e}$，PID 参数见第4.1节 |
+| `'stepback'` | 积分反步控制器：利用 Lyapunov 稳定性理论设计，参数 $k_1=200$，$k_2=500$（见第4.2节） |
+| `'mpc'` | 模型预测控制：预测时域 $N=10$，控制周期 $T_s=0.001$ s，带力/速度约束（见第4.3节） |
+
+**力-电流映射方法** (`force_2_current_methods`)：
+
+| 方法 | 说明 |
+|------|------|
+| `'diff'` | 差动线性映射：$i_{\text{ctrl}} = F_{\text{des}} / k_i$，限幅 $\pm i_{\text{bias}}$ |
+| `'single'` | 单侧力映射：根据 $F_{\text{des}}$ 符号选择上或下磁铁，由简化力公式反算电流，限幅 $[0, 2i_{\text{bias}}]$ |
+| `'none'` | 无映射：直接将 $F_{\text{des}}$ 作为 $F_{\text{em}}$（不经过电流环） |
+
+#### 电磁力计算
+
+仿真中电磁力使用 **Frolich 磁饱和模型**（`using_current_dynamic = true`）计算，并加入 **800 Hz 低通滤波器**模拟电流环动态：
+
+$$
+i_{f,k} = (1-\alpha) i_{f,k-1} + \alpha i_{\text{raw},k}, \quad \alpha = \frac{\Delta t}{\Delta t + \tau}, \quad \tau = \frac{1}{2\pi f_c}
+$$
+
+其中截止频率 $f_c = 800$ Hz。
+
+#### 电磁力系数
+
+简化模型下的电磁力系数（用于力-电流映射）：
+
+$$
+k_0 = \frac{\mu_0 A_a N^2 \cos\alpha}{8} \approx 5.44 \times 10^{-7} \; \text{N·m}^2/\text{A}^2
+$$
+
+#### 仿真输出
+
+仿真记录以下变量（每隔仿真步记录）：
+
+| 变量 | 符号 | 单位 |
+|------|------|------|
+| 位移 | $x$ | m |
+| 速度 | $v$ | m/s |
+| 控制电流 | $i_{\text{ctrl}}$ | A |
+| 电磁力 | $F_{\text{em}}$ | N |
+| 弹簧力 | $F_{\text{spring}}$ | N |
+| 期望力 | $F_{\text{des}}$ | N |
+| 实时力上限 | $F_{\text{max}}$ | N |
+| 实时力下限 | $F_{\text{min}}$ | N |
+
+仿真完成后生成 **6 子图**显示：位移跟踪、跟踪误差、速度、控制电流、各力分量对比、相图。
+
+仿真工况1：$i_{bias} = 1.5$，力计算方法选择PID控制器，力电流映射方法选择差动（'diff'），运动轨迹选择方波（'square'）。
+
+仿真结果：
+
+<figure>
+  <img src="./figures/pi_diff_1_5bias_square.png" alt="图片描述">
+  <figcaption>图 1：仿真工况1 — 偏置电流 $i_{\text{bias}}=1.5$ A，PID控制器 + 差动电流映射，方波轨迹跟踪。上排：位移跟踪（参考 vs 实际）、跟踪误差；中排：速度响应、控制电流；下排：各力分量（$F_{\text{em}}$, $F_{\text{spring}}$, $F_{\text{net}}$, $F_{\text{des}}$）、相图 $(x, v)$。</figcaption>
+</figure>
+
+仿真工况2：$i_{bias} = 3.0$，力计算方法选择PID控制器，力电流映射方法选择差动（'diff'），运动轨迹选择方波（'square'）。
+仿真结果：
+
+<figure>
+  <img src="./figures/pi_diff_3_0bias_square.png" alt="图片描述">
+  <figcaption>图 2：仿真工况2 — 偏置电流 $i_{\text{bias}}=3.0$ A，PID控制器 + 差动电流映射，方波轨迹跟踪。上排：位移跟踪（参考 vs 实际）、跟踪误差；中排：速度响应、控制电流；下排：各力分量（$F_{\text{em}}$, $F_{\text{spring}}$, $F_{\text{net}}$, $F_{\text{des}}$）、相图 $(x, v)$。</figcaption>
+</figure>
+
+结果显示磁轴承的浮子被吸附到一侧，并且控制器完全失去调节能力。这意味着原本最大电流从6 A降低至3 A才能使得磁轴承能够随着浮子运动。从图中可以看出，当刚刚发生超调时，电流绝对值减小（从-1.4 A开始，绝对值减小），然而，由于惯性作用浮子继续上升，根据图3在不同的位置的电流-电磁力曲线可知，随着电流的反向变化，正向电磁力不减反升，从而使得误差进一步增大，最终导致浮子吸附到磁极上。
+
+<figure>
+    <img src="./figures/pi_diff_3_0bias_square_characteristic.png" alt="图片描述">
+    <figcaption>
+    图3：$i_{bias} = 3.0 A$时，不同位置的电流-电磁力曲线。
+    </figcaption>
+</figure>
+
+# 三、控制器设计（位置误差到电磁力）
+## 3.1. pi控制器
+
+## 3.2. 积分反步控制器
+
+### 3.2.1 控制器设计及稳定性分析
 单个磁轴承的动力学模型为：
 $$
 \begin{equation}

@@ -48,6 +48,7 @@ k_spring = 5000;                % 弹簧刚度 [N/m]
 
 % 偏置电流
 i_bias = 3.0;                   % 偏置电流 [A]
+noise_std = 1e-7;                % 位移白噪声标准差 [m]
 
 fprintf('========== 磁轴承动力学仿真参数 ==========\n');
 fprintf('转子质量 m = %.2f kg\n', m);
@@ -107,7 +108,7 @@ figure('Position', [50, 50, 1200, 500]);
 
 % 子图1：净力 vs 控制电流（不同位移）
 subplot(1, 2, 1);
-x_disps = [-0.2, -0.1, 0, 0.1, 0.2] * 1e-3;
+x_disps = [-0.5 -0.4 -0.3 -0.2, -0.1, 0, 0.1, 0.2, 0.3, 0.4, 0.5] * 1e-3;
 i_ctrl_plot = linspace(-3, 3, 100);
 colors = lines(length(x_disps));
 
@@ -172,7 +173,6 @@ x_rec = zeros(1, N_steps);
 v_rec = zeros(1, N_steps);
 i_ctrl_rec = zeros(1, N_steps);
 F_em_rec = zeros(1, N_steps);
-F_desired_rec = zeros(1, N_steps);
 F_max_rt_rec = zeros(1, N_steps);
 F_min_rt_rec = zeros(1, N_steps);
 F_desired_rec = zeros(1, N_steps);
@@ -241,7 +241,7 @@ fprintf('  Kd = %.1f N/(m/s)\n', Kd);
 fprintf('仿真时长: %.2f s, 步长: %.2e s\n', t_end, dt);
 %% ==================== 控制器设计（STEPBACK）====================
 stepback_k_1 = 200;
-stepback_k_2 = 100;
+stepback_k_2 = 500;
 
 %% ==================== 控制器设计（MPC）====================
 mpc_k = k_spring;
@@ -281,7 +281,10 @@ end
 mpc_x_0 = [0; 0];
 
 mpc_Q = [1e20 0; 0 1e3];
-mpc_Q_bar = kron(eye(mpc_N), mpc_Q);
+% 添加衰减：每一步的权重乘以 0.9^(step-1)，使近期预测权重更大
+mpc_decay = 1.0;
+mpc_weights = mpc_decay .^ (0:(mpc_N-1));
+mpc_Q_bar = kron(diag(mpc_weights), mpc_Q);
 
 mpc_R = 1e6;
 mpc_R_bar = kron(eye(mpc_N), mpc_R);
@@ -346,7 +349,7 @@ tic;
 
 force_cal_methods = 'pi';
 
-force_2_current_methods = 'single';
+force_2_current_methods = 'diff';
 
 % 计算 maglev_bearing_control 中公式（2）的 k_0
 % k_0 = mu_0 * A_a * N^2 * cos(alpha) / 8
@@ -477,7 +480,7 @@ for k = 1:N_steps_sim - 1
     % --- 动力学更新（半隐式欧拉法）---
     a_net = (F_em + F_spring) / m;  % 加速度 [m/s^2]
     v = v + a_net * dt;
-    x = x + v * dt;
+    x = x + v * dt + noise_std * randn();
     
     % --- 限制位移不能超过 +-x_0 ---
     if x > x_0
@@ -575,6 +578,8 @@ axis equal;
 
 sgtitle('Magnetic Bearing Dynamics Simulation (with Frolich Saturation Model)', ...
         'FontSize', 15, 'FontWeight', 'bold');
+saveas(gcf, 'dynamics_simulation.png');
+fprintf('Figure saved to dynamics_simulation.png\n');
 
 %% ==================== 抗扰动测试（可选） ====================
 % 如需测试抗扰动能力，可取消注释以下代码块
