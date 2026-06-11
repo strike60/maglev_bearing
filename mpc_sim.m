@@ -165,6 +165,11 @@ for i = 1:step_num
     
     % 计算梯度
     f = 2 * M_udQ * (M_x * x_cur - ref_vec);
+
+    % 更新约束
+    b_2 = C * ones(2*N, 1) * v_max - C * M_x * x_cur;
+    b_3 = C * ones(2*N, 1) * v_max + C * M_x * x_cur;
+    b = [b_1; b_2; b_3];
     
     % 求解 QP
     [u, ~, exitflag] = quadprog(H, f, a, b, [], [], [], [], warm, options);

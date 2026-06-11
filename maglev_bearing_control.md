@@ -57,28 +57,28 @@ B_{\text{gap}} = \mu_0 H_{\text{gap}} = \frac{\mu_0 N i}{2h}
 $$
 
 **步骤三：磁场储能**
-
-气隙中的磁场储能密度为 $w = B^2/(2\mu_0)$，气隙体积为 $V = A_a \cdot 2h$（两个气隙），总储能为：
+气隙中的磁场储能密度为 $w = B^2/(2\mu_0)$，气隙体积为 $V = A_a \cdot h$（单侧气隙，磁通穿过气隙一次，实际储能体积为单侧气隙体积），总储能为：
 
 $$
-W = w \cdot V = \frac{B_{\text{gap}}^2}{2\mu_0} \cdot 2A_a h = \frac{\mu_0 N^2 i^2 A_a}{4h}
+W = w \cdot V = \frac{B_{\text{gap}}^2}{2\mu_0} \cdot A_a h = \frac{\mu_0 N^2 i^2 A_a}{8h}
 $$
+
 
 **步骤四：虚位移法求电磁力**
 
 电磁力等于磁场储能对气隙长度的负偏导：
 
 $$
-F = -\frac{\partial W}{\partial h} = \frac{\mu_0 N^2 i^2 A_a}{4h^2}
+F = -\frac{\partial W}{\partial h} = \frac{\mu_0 N^2 i^2 A_a}{8h^2}
 $$
 
 考虑磁极面与竖直方向的夹角 $\alpha$，磁力在竖直方向的有效分量为：
 
 $$
-F = \frac{\mu_0 A_a N^2 \cos\alpha}{4} \cdot \frac{i^2}{h^2}
+F = \frac{\mu_0 A_a N^2 \cos\alpha}{8} \cdot \frac{i^2}{h^2}
 $$
 
-定义 $k_0 = \dfrac{\mu_0 A_a N^2 \cos\alpha}{4}$，即得 \eqref{eq:2}。
+定义 $k_0 = \dfrac{\mu_0 A_a N^2 \cos\alpha}{8}$，即得 \eqref{eq:2}。
 
 ### 1.2 考虑磁饱和的情况
 
@@ -338,5 +338,95 @@ $$
 3. **差动配置线性化**：在偏置电流 $i_{\text{bias}} = 3$ A 附近，净电磁力与控制电流近似呈线性关系，有利于控制器设计。
 4. **力-位移刚度**：位移 $x$ 增大时，净力曲线斜率增大，即系统的等效刚度随位移增大而增大（正刚度特性）。
 
+# 三、控制器设计（位置误差到电磁力控制器）
 
+## 1. pi控制器
 
+## 2. 积分反步控制器
+
+### 2.1 控制器设计及稳定性分析
+单个磁轴承的动力学模型为：
+$$
+\begin{equation}
+    \label{eq:4}
+    m\ddot{x} = F_{\text{em}} + k x.
+\end{equation}
+$$
+其中，$k$为弹簧的刚度，$m$为转子质量，$x$为转子位移。则
+$$
+\begin{equation}
+    \label{eq:5}
+        \left\{
+        \begin{aligned}
+            & x_1 = x \\
+            & \dot{x_1} = x_2 \\
+            & \dot{x_2} = \frac{F_{\text{em}}}{m} - \frac{k}{m} x_1.
+        \end{aligned} 
+    \right.
+\end{equation}
+$$
+
+令
+$$
+    \begin{equation}
+        \label{eq:6}
+        z_1 = x_1 - x_{\text{ref}}.
+    \end{equation}
+$$
+
+$$
+    \begin{equation}
+        \label{eq:7}
+        \dot{z}_1 = x_2 - \dot{x}_{\text{ref}}.
+    \end{equation}
+$$
+因此，$x_2$控制的目标值为：$x_2 \to -k_1 z_1 + \dot{x}_{\text{ref}}$。令
+$$
+    \begin{equation}
+        \label{eq:8}
+        z_2 = x_2 + k_1 z_1 - \dot{x}_{\text{ref}}.
+    \end{equation}
+$$
+将\eqref{eq:8}带入\eqref{eq:7}
+$$
+\begin{equation}
+    \label{eq:9}
+    \dot{z}_1 = -k_1 z_1 + z_2.
+\end{equation}
+$$
+设计Lyapunov函数
+$$
+\begin{equation}
+    \label{eq:10}
+    V = \frac{1}{2} z^2_1 + \frac{1}{2} z^2_2.  
+\end{equation}
+$$
+
+$$
+\begin{equation}
+    \label{eq:11}
+    \dot{V} = z_1 \dot{z}_1 + z_2 \dot{z}_2.
+\end{equation}
+$$
+将\eqref{eq:5}、\eqref{eq:8}、\eqref{eq:9}带入\eqref{eq:11}得
+$$
+\begin{equation}
+    \label{eq:12}
+    \dot{V} = -k_1 z_1^2 + z_2 \left[ \frac{F_{\text{em}}}{m} - \frac{k}{m} x_1 + k_1 z_2 + \left( 1 - k_1^2 \right)z_1 - \ddot{x}_{\text{ref}} \right].
+\end{equation}
+$$
+设计控制率：
+$$
+\begin{equation}
+    \label{eq:13}
+    F_{\text{em}} = m \left[ -\left( k_1 + k_2 \right)z_2 + (k_1^2 - 1)z_1 + \frac{k}{m} x_1 + \ddot{x}_{\text{ref}} \right].
+\end{equation}
+$$
+则
+$$
+    \label{eq:14}
+    \dot{V} = -k_1 z_1^2 - k_2 z_2^2.
+$$
+系统渐进稳定。
+
+### 2.2 仿真结果
