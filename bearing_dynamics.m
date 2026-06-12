@@ -347,9 +347,9 @@ mpc_warm = [];
 fprintf('正在仿真...\n');
 tic;
 
-force_cal_methods = 'pi';
+force_cal_methods = 'stepback';
 
-force_2_current_methods = 'diff';
+force_2_current_methods = 'single';
 
 % 计算 maglev_bearing_control 中公式（2）的 k_0
 % k_0 = mu_0 * A_a * N^2 * cos(alpha) / 8
