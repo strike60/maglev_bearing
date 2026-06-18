@@ -194,7 +194,7 @@ calc_force = @(i, h) calc_electromagnetic_force(i, h, a_frolich, b_frolich, ...
 [calc_net_force, calc_net_force2, reset_filters] = ...
     create_differential_force_calculator(x_0, calc_force, dt, i_bias, true);
 %% ==================== 参考轨迹 ====================
-mode = 'square';
+mode = 'step';
 
 switch mode
     case 'step'
@@ -347,9 +347,9 @@ mpc_warm = [];
 fprintf('正在仿真...\n');
 tic;
 
-force_cal_methods = 'stepback';
+force_cal_methods = 'pi';
 
-force_2_current_methods = 'single';
+force_2_current_methods = 'diff';
 
 % 计算 maglev_bearing_control 中公式（2）的 k_0
 % k_0 = mu_0 * A_a * N^2 * cos(alpha) / 8

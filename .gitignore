@@ -22,3 +22,8 @@
 !*.png
 !**/
 !**/*.png
+
+# Allow Simulink model files (.slx)
+!*.slx
+!**/*.slx
+
