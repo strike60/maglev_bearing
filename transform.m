@@ -6,6 +6,7 @@ floater_hight = 0.03;
 
 Rz = @(th) [cos(th), -sin(th), 0; sin(th), cos(th), 0; 0, 0, 1];
 Ry = @(th) [cos(th), 0, sin(th); 0, 1, 0; -sin(th), 0, cos(th)];
+Rx = @(th) [1, 0, 0; 0, cos(th), -sin(th); 0, sin(th), cos(th)];
 
 cross_matrix = @(a) [0, -a(3), a(2); a(3), 0, -a(1); -a(2), a(1), 0];
 
@@ -104,7 +105,11 @@ T2 = T2(:, 1:2);
 
 FT2 = [F2; T2];
 
+% 局部坐标系到质心固连坐标系的转化
 FT = [FT0 FT1 FT2];
+
+% 质心固连坐标系转化到惯性系的转化
+
 
 %% 位置速度转换：px,py,pz,wx,wy,wz -> mb0_x, mb0_ys
 %% 6自由度换算到每一个磁轴承也会是6个运动自由度，此时控制两个自由度位移没有意义
