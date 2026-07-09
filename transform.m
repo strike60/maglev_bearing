@@ -94,7 +94,7 @@ T1 = T1(:, 1:2);
 
 FT1 = [F1; T1];
 
-%% mb2_fx, mb1_fy -> fx, fy, fz, tx, ty, tz
+%% mb2_fx, mb2_fy -> fx, fy, fz, tx, ty, tz
 
 r2_fp = T_mb2_2_platform * [0 0 0 1]';
 
