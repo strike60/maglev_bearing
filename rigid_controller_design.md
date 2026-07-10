@@ -83,3 +83,14 @@ SO(3)空间是一个流形（Manifold），通俗说就是一个弯曲的“曲�
 
 $\bf{REMARK\ 5：}$
 为什么要用矩阵对数？矩阵对数（Matrix Logarithm）是矩阵指数（Matrix Exponential）的逆运算。在姿态控制中，它的作用极其明确：把弯曲流形 SO(3) 上的旋转矩阵，映射到平坦的向量空间（即我们熟悉的x, y, z三维轴角向量）中。
+
+## 3. 为什么旋转矩阵取对数就能表示轴角向量？
+
+### 3.1 运动的本质——微分方程
+
+$$
+\begin{equation}
+    \label{eq:6}
+    \dot{\mathbf{R}}(t) = \mathbf{X} \mathbf{R}(t), \mathbf{R}(0) = I.
+\end{equation}
+$$
